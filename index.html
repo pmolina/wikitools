@@ -1,0 +1,123 @@
+
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="author" content="Patricio Molina">
+        <title>Wikiweight</title>
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
+        <script type="text/javascript">
+            var BASE_URL = 'https://es.wikipedia.org';
+            var API_URL = BASE_URL + '/w/api.php';
+
+            function process_pages(titles) {
+                $('#results').html(
+                    '<table class="table table-striped"><tr>'
+                    + '<td><strong>Length (in bytes)</strong></td>'
+                    + '<td><strong>Title</strong></td>'
+                    + '</tr></table>'
+                );
+                for (i in titles) {
+                    var title = titles[i];
+                    var data = {
+                        'action': 'query',
+                        'prop':'info',
+                        'format': 'json',
+                        'titles': title
+                    };
+                    $.ajax({
+                        type: 'GET',
+                        url: API_URL,
+                        data: data,
+                        dataType: 'jsonp',
+                        success: function(data) {
+                            var error = data.error;
+                            if (data && !error) {
+                                var key = Object.keys(data.query.pages)[0];
+                                var length = data['query']['pages'][key]['length'];
+                                var title = data['query']['pages'][key]['title'];
+                                var link = BASE_URL + '/wiki/' + title;
+                                $('#results table').append('<tr><td>' + length + '</td><td><a href="' + link + '" target="_blank">' + title + '</a></td></tr>');
+                                // Diff data:
+                                // https://es.wikipedia.org/w/api.php?action=query&prop=revisions&titles=Hola&rvprop=timestamp%7Cuser%7Csize&rvend=2015-06-14T00:00:00Z&rvlimit=500
+                            }
+                            else {
+                                console.debug(error);
+                            }
+                        }
+                    });
+                }
+            }
+
+            function process_category(category) {
+                var data = {
+                    'action': 'query',
+                    'list': 'categorymembers',
+                    'format': 'json',
+                    'rawcontinue': '',
+                    'cmlimit': 500,
+                    'cmtitle': category
+                };
+                $.ajax({
+                    type: 'GET',
+                    url: API_URL,
+                    data: data,
+                    dataType: 'jsonp',
+                    success: function(data) {
+                        var error = data.error;
+                        if (data && !error) {
+                            var categoryMembers = data['query']['categorymembers'];
+                            var titles = []
+                            for (i in categoryMembers) {
+                                var title = categoryMembers[i]['title'];
+                                titles.push(title);
+                            }
+                            process_pages(titles);
+                        }
+                        else {
+                            console.debug(error);
+                        }
+                    }
+                });
+            }
+
+            $(function() {
+                $('#test').click(function(){
+                    var value = $('#categoryName').val();
+                    if (!value) {
+                        value = $('#categoryName').attr('placeholder');
+                    }
+                    process_category(value);
+                });
+            });
+        </script>
+        <style>
+        body {
+            padding: 10px;
+        }
+        </style>
+    </head>
+
+    <body>
+        <!-- BEGIN Container -->
+        <div class="container">
+            <div class="row">
+                <form class="form-inline">
+                    <div class="form-group">
+                        <label for="categoryName">Category name</label>
+                        <input type="text" class="form-control" id="categoryName" style="width: 500px;" placeholder="Categoría:Acontecimientos futuros de fútbol">
+                    </div>
+                    <input id="test" class="btn btn-default" type="button" value="Get data">
+                </form>
+            </div>
+            <div class="row" style="padding: 20px 0;">
+                <div id="results"></div>
+            </div>
+        </div>
+        <!-- END Container -->
+  </body>
+</html>
